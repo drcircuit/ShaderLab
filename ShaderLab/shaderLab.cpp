@@ -102,7 +102,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	RegisterClassEx(&wc);
 
 	hWnd = CreateWindowEx(0, L"WindowClass1", L"Our First Direct3D Program",
-		WS_OVERLAPPEDWINDOW, 0, 0, WWIDTH, WHEIGHT, NULL, NULL, hInstance, NULL);
+		WS_OVERLAPPEDWINDOW, 0, 0, viewportWidth, viewportHeight, NULL, NULL, hInstance, NULL);
 
 	ShowWindow(hWnd, nCmdShow);
 
@@ -144,8 +144,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 // this is the main message handler for the program
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
+	// exit on ESC key press
+	case WM_KEYDOWN: {
+		if (wParam == VK_ESCAPE) {
+			DestroyWindow(hWnd);
+		}
+	} break;
 	case WM_DESTROY: {
 		PostQuitMessage(0);
+		ShowCursor(true);
 		return 0;
 	} break;
 	case WM_SIZE: {
@@ -163,18 +170,28 @@ void InitD3D(HWND hWnd) {
 	DXGI_SWAP_CHAIN_DESC scd;
 	ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
 
+
+	// calculate height based on aspect ratio and current screen height
+
+	int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+	int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	int height = screenWidth;
+	int width = static_cast<int>(height * aspectRatio);
+
 	scd.BufferCount = 2; // Use two or more buffers
 	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	scd.BufferDesc.Width = width;
+	scd.BufferDesc.Height = height;
 	scd.OutputWindow = hWnd;
 	scd.SampleDesc.Count = 1;
 	scd.Windowed = FALSE;
-	scd.BufferDesc.Width = WWIDTH;
-	scd.BufferDesc.Height = WHEIGHT;
 	scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Use flip-model swap effect
 	scd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // If you want to allow full-screen switching
-	scd.BufferDesc.Scaling = DXGI_MODE_SCALING_STRETCHED;
+	scd.BufferDesc.Scaling = DXGI_MODE_SCALING_CENTERED;
 
+	// hide mouse cursor 
+	ShowCursor(false);
 	// ... [Configure your swap chain description]
 
 	D3D_FEATURE_LEVEL featureLevels[] = {
