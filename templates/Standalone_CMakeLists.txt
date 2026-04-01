@@ -1,0 +1,369 @@
+cmake_minimum_required(VERSION 3.20)
+if(POLICY CMP0091)
+    cmake_policy(SET CMP0091 NEW)
+endif()
+project(ShaderLabPlayer VERSION 1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Platform check
+if(NOT WIN32)
+    message(FATAL_ERROR "ShaderLab currently supports Windows only")
+endif()
+
+option(SHADERLAB_ENABLE_DXC "Enable DXC shader compiler (requires dxcompiler.dll)" ON)
+option(SHADERLAB_STATIC_RUNTIME "Link MSVC runtime statically" OFF)
+option(SHADERLAB_USE_CRINKLER "Use Crinkler as the linker (self-contained builds)" OFF)
+option(SHADERLAB_CRINKLER_TINYIMPORT "Enable Crinkler /TINYIMPORT optimization" ON)
+set(SHADERLAB_CRINKLER_HASH_SIZE_MB "64" CACHE STRING "Crinkler hash table size in MB")
+set(SHADERLAB_CRINKLER_HASH_TRIES "1" CACHE STRING "Crinkler hash optimization tries")
+set(SHADERLAB_CRINKLER_ORDER_TRIES "1" CACHE STRING "Crinkler code reordering tries")
+if(NOT DEFINED SHADERLAB_RUNTIME_IMGUI)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(SHADERLAB_RUNTIME_IMGUI_DEFAULT ON)
+    else()
+        set(SHADERLAB_RUNTIME_IMGUI_DEFAULT OFF)
+    endif()
+    set(SHADERLAB_RUNTIME_IMGUI ${SHADERLAB_RUNTIME_IMGUI_DEFAULT} CACHE BOOL "Enable ImGui debug overlay in runtime player")
+endif()
+option(SHADERLAB_COMPACT_TRACK_DEBUG "Enable compact track runtime debug logs" OFF)
+option(SHADERLAB_RUNTIME_DEBUG_LOG "Enable general runtime debug logs" OFF)
+option(SHADERLAB_TINY_PLAYER "Enable ultra-minimal runtime profile (strips optional subsystems)" OFF)
+option(SHADERLAB_BUILD_MICRO_PLAYER "Build ultra-minimal benchmark runtime target" OFF)
+option(SHADERLAB_TINY_RUNTIME_COMPILE "Enable runtime shader compilation in tiny player" ON)
+option(SHADERLAB_TINY_TRACE "Enable lean tiny-player diagnostics via OutputDebugString" OFF)
+option(SHADERLAB_TINY_DEV_OVERLAY "Enable tiny-player on-screen diagnostic overlay" OFF)
+set(CRINKLER_PATH "" CACHE FILEPATH "Path to crinkler.exe")
+
+if(MSVC AND SHADERLAB_STATIC_RUNTIME)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+if(MSVC AND SHADERLAB_USE_CRINKLER)
+    if(CRINKLER_PATH)
+        if(EXISTS "${CRINKLER_PATH}")
+            set(CMAKE_LINKER "${CRINKLER_PATH}" CACHE FILEPATH "Crinkler linker" FORCE)
+        else()
+            message(WARNING "CRINKLER_PATH does not exist: ${CRINKLER_PATH}")
+        endif()
+    endif()
+endif()
+
+function(shaderlab_assert_target_has_no_sources target)
+    if(NOT TARGET ${target})
+        return()
+    endif()
+
+    get_target_property(_sources ${target} SOURCES)
+    if(NOT _sources)
+        return()
+    endif()
+
+    foreach(_source IN LISTS _sources)
+        file(TO_CMAKE_PATH "${_source}" _source_norm)
+        foreach(_forbidden IN LISTS ARGN)
+            string(FIND "${_source_norm}" "${_forbidden}" _match)
+            if(NOT _match EQUAL -1)
+                message(FATAL_ERROR
+                    "Layering violation: target '${target}' contains forbidden source '${_source_norm}' (matched '${_forbidden}').")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
+
+# Third-party dependencies
+add_subdirectory(third_party)
+
+# Core API modules
+add_library(ShaderLabCoreApi STATIC
+    src/graphics/Device.cpp
+    src/graphics/Swapchain.cpp
+    src/graphics/CommandQueue.cpp
+    src/graphics/PreviewRenderer.cpp
+    src/audio/BeatClock.cpp
+    src/core/PackageManager.cpp
+    include/ShaderLab/Graphics/Device.h
+    include/ShaderLab/Graphics/Swapchain.h
+    include/ShaderLab/Graphics/CommandQueue.h
+    include/ShaderLab/Graphics/PreviewRenderer.h
+    include/ShaderLab/Audio/AudioSystem.h
+    include/ShaderLab/Audio/BeatClock.h
+    include/ShaderLab/Core/PackageManager.h
+    include/ShaderLab/Core/ShaderLabData.h
+)
+
+if(NOT SHADERLAB_TINY_PLAYER)
+    target_sources(ShaderLabCoreApi PRIVATE
+        src/core/Serializer.cpp
+        include/ShaderLab/Core/Serializer.h
+    )
+endif()
+
+if(NOT SHADERLAB_TINY_PLAYER OR SHADERLAB_TINY_RUNTIME_COMPILE)
+    target_sources(ShaderLabCoreApi PRIVATE
+        src/shader/ShaderCompiler.cpp
+        include/ShaderLab/Shader/ShaderCompiler.h
+    )
+endif()
+
+if(NOT SHADERLAB_TINY_PLAYER)
+    target_sources(ShaderLabCoreApi PRIVATE
+        src/audio/AudioSystem.cpp
+    )
+endif()
+
+target_include_directories(ShaderLabCoreApi PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb
+)
+
+if(NOT SHADERLAB_TINY_PLAYER)
+    target_include_directories(ShaderLabCoreApi PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/miniaudio
+    )
+endif()
+
+target_link_libraries(ShaderLabCoreApi PUBLIC
+    d3d12.lib
+    dxgi.lib
+    dxguid.lib
+)
+
+if(NOT SHADERLAB_TINY_PLAYER OR SHADERLAB_TINY_RUNTIME_COMPILE)
+    target_link_libraries(ShaderLabCoreApi PUBLIC d3dcompiler.lib)
+endif()
+
+if(SHADERLAB_ENABLE_DXC)
+    target_link_libraries(ShaderLabCoreApi PUBLIC dxcompiler.lib)
+endif()
+
+if(SHADERLAB_RUNTIME_IMGUI)
+    target_link_libraries(ShaderLabCoreApi PUBLIC imgui)
+endif()
+
+if(SHADERLAB_TINY_PLAYER)
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_TINY_PLAYER=1)
+else()
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_TINY_PLAYER=0)
+endif()
+
+if(SHADERLAB_TINY_RUNTIME_COMPILE)
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_TINY_RUNTIME_COMPILE=1)
+else()
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_TINY_RUNTIME_COMPILE=0)
+endif()
+
+if(SHADERLAB_ENABLE_DXC)
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_ENABLE_DXC=1)
+else()
+    target_compile_definitions(ShaderLabCoreApi PUBLIC SHADERLAB_ENABLE_DXC=0)
+endif()
+
+# Player runtime / DevKit modules
+add_library(ShaderLabDevKit STATIC
+    src/app/runtime/PlayerApp.cpp
+    src/app/runtime/DemoPlayer.cpp
+    src/app/runtime/DemoPlayer.SceneGraph.cpp
+    src/app/runtime/DemoPlayer.Frame.cpp
+    src/app/runtime/DemoPlayer.Resources.cpp
+    src/app/runtime/DemoPlayer.EffectChains.cpp
+    src/app/runtime/RuntimeStartupPolicy.cpp
+    src/app/runtime/RuntimeWindowPolicy.cpp
+    include/ShaderLab/App/PlayerApp.h
+    include/ShaderLab/App/DemoPlayer.h
+    include/ShaderLab/Runtime/RuntimeStartupPolicy.h
+    include/ShaderLab/Runtime/RuntimeWindowPolicy.h
+)
+
+target_include_directories(ShaderLabDevKit PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb
+)
+
+target_include_directories(ShaderLabDevKit PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/miniaudio
+)
+
+target_link_libraries(ShaderLabDevKit PUBLIC
+    d3d12.lib
+    dxgi.lib
+    dxguid.lib
+    d3dcompiler.lib
+)
+
+if(SHADERLAB_BUILD_EDITOR OR (SHADERLAB_BUILD_RUNTIME AND SHADERLAB_RUNTIME_IMGUI))
+    target_link_libraries(ShaderLabDevKit PUBLIC imgui)
+endif()
+
+if(SHADERLAB_RUNTIME_IMGUI)
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_RUNTIME_IMGUI=1)
+else()
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_RUNTIME_IMGUI=0)
+endif()
+
+if(SHADERLAB_COMPACT_TRACK_DEBUG)
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_COMPACT_TRACK_DEBUG=1)
+else()
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_COMPACT_TRACK_DEBUG=0)
+endif()
+
+if(SHADERLAB_RUNTIME_DEBUG_LOG)
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_RUNTIME_DEBUG_LOG=1)
+else()
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_RUNTIME_DEBUG_LOG=0)
+endif()
+
+target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_TINY_PLAYER=0)
+
+target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_TINY_RUNTIME_COMPILE=0)
+
+target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_TINY_TRACE=0)
+
+target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_TINY_DEV_OVERLAY=0)
+
+if(SHADERLAB_ENABLE_DXC)
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_ENABLE_DXC=1)
+else()
+    target_compile_definitions(ShaderLabDevKit PUBLIC SHADERLAB_ENABLE_DXC=0)
+endif()
+
+if(MSVC)
+    target_compile_options(ShaderLabDevKit PRIVATE
+        /W4
+        /WX-
+        /permissive-
+        /Zc:__cplusplus
+    )
+
+    target_compile_options(ShaderLabCoreApi PRIVATE /O2)
+    if(NOT SHADERLAB_USE_CRINKLER)
+        target_compile_options(ShaderLabCoreApi PRIVATE /GL)
+    endif()
+
+    if(SHADERLAB_TINY_PLAYER)
+        target_compile_options(ShaderLabDevKit PRIVATE
+            /Os
+            /Oy
+            /Oi
+            /fp:fast
+            /GS-
+            /GR-
+            /Gy
+            /Gw
+            /GF
+            /Zc:threadSafeInit-
+        )
+    endif()
+endif()
+
+# Player Executable
+add_executable(ShaderLabPlayer WIN32
+    src/app/runtime/main_player.cpp
+    include/ShaderLab/App/PlayerApp.h
+)
+
+target_link_libraries(ShaderLabPlayer PRIVATE ShaderLabDevKit ShaderLabCoreApi)
+
+target_include_directories(ShaderLabPlayer PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+if(MSVC AND SHADERLAB_TINY_PLAYER)
+    if(SHADERLAB_USE_CRINKLER)
+        target_link_options(ShaderLabPlayer PRIVATE
+            /INCREMENTAL:NO
+            /MANIFEST:NO
+            /RELEASE
+            /COMPMODE:SLOW
+            /ORDERTRIES:80
+            /UNALIGNCODE
+        )
+    else()
+        target_link_options(ShaderLabPlayer PRIVATE
+            /INCREMENTAL:NO
+            /OPT:REF
+            /OPT:ICF
+            /LTCG
+            /MANIFEST:NO
+            /RELEASE
+        )
+    endif()
+endif()
+
+add_executable(ShaderLabScreenSaver WIN32
+    src/app/runtime/main_screensaver.cpp
+    include/ShaderLab/App/PlayerApp.h
+)
+
+target_link_libraries(ShaderLabScreenSaver PRIVATE ShaderLabDevKit ShaderLabCoreApi)
+
+target_include_directories(ShaderLabScreenSaver PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+set_target_properties(ShaderLabScreenSaver PROPERTIES SUFFIX ".scr")
+
+if(MSVC AND SHADERLAB_TINY_PLAYER)
+    if(SHADERLAB_USE_CRINKLER)
+        target_link_options(ShaderLabScreenSaver PRIVATE
+            /INCREMENTAL:NO
+            /MANIFEST:NO
+            /RELEASE
+            /COMPMODE:SLOW
+            /ORDERTRIES:80
+            /UNALIGNCODE
+        )
+    else()
+        target_link_options(ShaderLabScreenSaver PRIVATE
+            /INCREMENTAL:NO
+            /OPT:REF
+            /OPT:ICF
+            /LTCG
+            /MANIFEST:NO
+            /RELEASE
+        )
+    endif()
+endif()
+
+if(SHADERLAB_BUILD_MICRO_PLAYER)
+    add_subdirectory(src/app/tiny)
+endif()
+
+if(SHADERLAB_ENABLE_DXC)
+    # Copy DXC DLLs to output directory
+    # We assume the Distributor has placed the DLLs in the parent directory of this script (the app root)
+    add_custom_command(TARGET ShaderLabPlayer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/../dxcompiler.dll"
+            $<TARGET_FILE_DIR:ShaderLabPlayer>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/../dxil.dll"
+            $<TARGET_FILE_DIR:ShaderLabPlayer>
+    )
+endif()
+
+shaderlab_assert_target_has_no_sources(ShaderLabDevKit
+    "src/core/BuildPipeline.cpp"
+    "src/core/RuntimeExporter.cpp"
+    "src/ui/")
+
+shaderlab_assert_target_has_no_sources(ShaderLabPlayer
+    "src/core/BuildPipeline.cpp"
+    "src/core/RuntimeExporter.cpp"
+    "src/ui/")
+
+shaderlab_assert_target_has_no_sources(ShaderLabScreenSaver
+    "src/core/BuildPipeline.cpp"
+    "src/core/RuntimeExporter.cpp"
+    "src/ui/")
+
+shaderlab_assert_target_has_no_sources(ShaderLabMicroPlayer
+    "src/core/BuildPipeline.cpp"
+    "src/core/RuntimeExporter.cpp"
+    "src/ui/")

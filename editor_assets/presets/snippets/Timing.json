@@ -1,0 +1,14 @@
+{
+  "folder": "Timing",
+  "snippets": [
+    {
+      "code": "float beatFade(float beat, float peakBeat)\n{\n    float t = mod(beat - peakBeat + 4.0, 4.0);\n\n    float fadeOut = clamp(1.0 - t, 0.0, 1.0);\n    float fadeIn  = clamp(t - 3.0, 0.0, 1.0);\n\n    return max(fadeOut, fadeIn);\n}\n",
+      "name": "BeatFade"
+    },
+    {
+      "code": "float periodicBeatFade(float beatCount, float peakPeriod)\n{\n    float phase = mod(beatCount, peakPeriod);\n\n    float fadeIn  = clamp(phase - (peakPeriod - 1.0), 0.0, 1.0);\n    float fadeOut = clamp(1.0 - phase, 0.0, 1.0);\n\n    return max(fadeIn, fadeOut);\n}\n\n",
+      "name": "periodBeatFade"
+    }
+  ],
+  "version": 1
+}

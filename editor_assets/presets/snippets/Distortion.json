@@ -1,0 +1,10 @@
+{
+  "folder": "Distortion",
+  "snippets": [
+    {
+      "code": "//creds to IQ for his algorithm\nfloat3 distort(in float2 p, in float t){\n\tt *= 2.0;\n\tp += 0.5*sin(t*float2(1.1,1.1)+float2(0.0,0.5));\n\tfloat a = atan2(p.x, p.y);\n\tfloat r = length(p);\t\n\tfloat s = r*(1.0+0.5*cos(t*1.7));\n\tfloat2 uv = 0.1*t+0.05*p.yx+0.05*float2(cos(t+a*2.0),sin(t+a*2.0))/s;\n\treturn iChannel0.Sample(iSampler0, 0.5*uv).rgb;\n}\n\n",
+      "name": "Toroidal Distortion"
+    }
+  ],
+  "version": 1
+}

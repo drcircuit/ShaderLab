@@ -1,0 +1,12 @@
+#pragma once
+
+namespace ShaderLab::Metadata {
+inline constexpr const char Version[] = "@SHADERLAB_APP_VERSION@";
+inline constexpr const char ProductName[] = "@SHADERLAB_PRODUCT_NAME@";
+inline constexpr const char Publisher[] = "@SHADERLAB_PUBLISHER@";
+inline constexpr const char CompanyName[] = "@SHADERLAB_COMPANY_NAME@";
+inline constexpr const char Author[] = "@SHADERLAB_AUTHOR@";
+inline constexpr const char Description[] = "@SHADERLAB_DESCRIPTION@";
+inline constexpr const char Copyright[] = "@SHADERLAB_COPYRIGHT@";
+inline constexpr const char Website[] = "@SHADERLAB_WEBSITE@";
+}

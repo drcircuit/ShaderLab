@@ -1,0 +1,10 @@
+{
+  "folder": "General",
+  "snippets": [
+    {
+      "code": "float4 SnippetFunc(float2 uv, float t) {\n    return float4(uv, sin(t), 1.0);\n}\n",
+      "name": "Snippet 1"
+    }
+  ],
+  "version": 1
+}

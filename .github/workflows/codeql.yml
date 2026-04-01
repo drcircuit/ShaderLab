@@ -1,0 +1,112 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  schedule:
+    - cron: '0 3 * * 1'   # every Monday at 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (C/C++)
+    runs-on: windows-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Initialize CodeQL ────────────────────────────────────────────────────
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          # Query suite and path exclusions are managed in .github/codeql/codeql-config.yml
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # ── MSVC build environment ───────────────────────────────────────────────
+      - name: Set up MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ── Third-party dependencies ─────────────────────────────────────────────
+      - name: Download third-party dependencies
+        shell: pwsh
+        run: |
+          $tp = "third_party"
+
+          # ---- Dear ImGui (docking branch) -----------------------------------
+          $imguiDir = "$tp\imgui"
+          if (-not (Test-Path "$imguiDir\imgui.h")) {
+            Write-Host "Downloading Dear ImGui (docking)..."
+            $zip = "$env:TEMP\imgui-docking.zip"
+            Invoke-WebRequest `
+              -Uri "https://github.com/ocornut/imgui/archive/refs/heads/docking.zip" `
+              -OutFile $zip -UseBasicParsing
+            Expand-Archive $zip -DestinationPath $env:TEMP -Force
+            New-Item -ItemType Directory -Force -Path $imguiDir | Out-Null
+            Copy-Item "$env:TEMP\imgui-docking\*" $imguiDir -Recurse -Force
+            Remove-Item "$env:TEMP\imgui-docking", $zip -Recurse -Force
+          }
+
+          # ---- miniaudio -----------------------------------------------------
+          $miniAudio = "$tp\miniaudio\miniaudio.h"
+          if (-not (Test-Path $miniAudio)) {
+            Write-Host "Downloading miniaudio..."
+            New-Item -ItemType Directory -Force -Path "$tp\miniaudio" | Out-Null
+            Invoke-WebRequest `
+              -Uri "https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h" `
+              -OutFile $miniAudio -UseBasicParsing
+          }
+
+          # ---- nlohmann/json -------------------------------------------------
+          $jsonH = "$tp\json\include\nlohmann\json.hpp"
+          if (-not (Test-Path $jsonH)) {
+            Write-Host "Downloading nlohmann/json..."
+            New-Item -ItemType Directory -Force -Path (Split-Path $jsonH) | Out-Null
+            Invoke-WebRequest `
+              -Uri "https://raw.githubusercontent.com/nlohmann/json/develop/single_include/nlohmann/json.hpp" `
+              -OutFile $jsonH -UseBasicParsing
+          }
+
+          # ---- stb_image -----------------------------------------------------
+          $stb = "$tp\stb\stb_image.h"
+          if (-not (Test-Path $stb)) {
+            Write-Host "Downloading stb_image..."
+            New-Item -ItemType Directory -Force -Path "$tp\stb" | Out-Null
+            Invoke-WebRequest `
+              -Uri "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h" `
+              -OutFile $stb -UseBasicParsing
+          }
+
+          # ---- OpenFontIcons -------------------------------------------------
+          $openFontIconsTtf = "$tp\OpenFontIcons\OpenFontIcons.ttf"
+          if (-not (Test-Path $openFontIconsTtf)) {
+            Write-Host "Downloading OpenFontIcons..."
+            New-Item -ItemType Directory -Force -Path "$tp\OpenFontIcons" | Out-Null
+            Invoke-WebRequest `
+              -Uri "https://github.com/traverseda/OpenFontIcons/raw/master/OpenFontIcons.ttf" `
+              -OutFile $openFontIconsTtf -UseBasicParsing
+          }
+
+      # ── Configure & build (traced by CodeQL) ────────────────────────────────
+      - name: Configure (Release)
+        shell: pwsh
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Release)
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      # ── Run CodeQL analysis ──────────────────────────────────────────────────
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:c-cpp"

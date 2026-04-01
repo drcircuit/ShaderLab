@@ -1,0 +1,94 @@
+{
+  "folder": "Noise",
+  "snippets": [
+    {
+      "code": "// Texture-based Fractal Brownian Motion (FBM)\nfloat TexFBM(float2 uv, sampler2D noiseTexture, int octaves, float persistence) {\n    float total = 0.0;\n    float amplitude = 1.0;\n    float frequency = 1.0;\n    \n    for (int i = 0; i < octaves; i++) {\n        total += texture(noiseTexture, uv * frequency).r * amplitude;\n        frequency *= 2.0; // Increase frequency for the next octave\n        amplitude *= persistence; // Decrease amplitude based on persistence\n    }\n\n    return total;\n}\n\n",
+      "name": "Texture FBM"
+    },
+    {
+      "code": "// Noise Function Prototype\nfloat Noise(float2 uv);\n\n// Procedural Fractal Brownian Motion (FBM)\nfloat ProcFBM(float2 uv, int octaves, float persistence) {\n    float total = 0.0;\n    float amplitude = 1.0;\n    float frequency = 1.0;\n    \n    for (int i = 0; i < octaves; i++) {\n        total += Noise(uv * frequency) * amplitude;\n        frequency *= 2.0; // Increase frequency for the next octave\n        amplitude *= persistence; // Decrease amplitude based on persistence\n    }\n\n    return total;\n}\n\n",
+      "name": "Procedural FBM"
+    },
+    {
+      "code": "// Hash function for a single float input\nfloat Hash11(float x) {\n    return frac(sin(x * 12.9898) * 43758.5453);\n}\n\n",
+      "name": "Hash11"
+    },
+    {
+      "code": "// Hash function for a 2D input (two floats)\nfloat Hash21(float2 v) {\n    float n = dot(v, float2(127.1, 311.7)); // Combine the inputs\n    return frac(sin(n) * 43758.5453);\n}\n\n",
+      "name": "Hash21"
+    },
+    {
+      "code": "// Hash function for a 3D input (three floats)\nfloat Hash31(float3 v) {\n    float n = dot(v, float3(199.3, 127.2, 57.5)); // Combine the inputs\n    return frac(sin(n) * 43758.5453);\n}\n\n",
+      "name": "Hash31"
+    },
+    {
+      "code": "// Hash function for 2D input to produce a float2 output\nfloat2 Hash22(float2 v) {\n    float n = dot(v, float2(127.1, 311.7)); // Combine the input\n    return float2(frac(sin(n) * 43758.5453), frac(cos(n) * 43758.5453)); // Two outputs\n}\n\n\n",
+      "name": "Hash22"
+    },
+    {
+      "code": "// Hash function for 3D input to produce a float3 output\nfloat3 Hash32(float3 v) {\n    float n = dot(v, float3(199.3, 127.2, 57.5)); // Combine the input\n    return float3(frac(sin(n) * 43758.5453), frac(cos(n) * 43758.5453), frac(sin(n + 1.0) * 43758.5453)); // Three outputs\n}\n\n\n",
+      "name": "Hash32"
+    },
+    {
+      "code": "// Hash function for 3D input to produce a float3 output\nfloat3 Hash33(float3 v) {\n    float n = dot(v, float3(1.0, 2.0, 3.0)); // Combine the input\n    return float3(frac(sin(n) * 43758.5453), frac(cos(n) * 43758.5453), frac(sin(n + 2.0) * 43758.5453)); // Three outputs\n}\n\n",
+      "name": "Hash33"
+    },
+    {
+      "code": "// 2D Perlin-like Noise Function (depends on Hash22)\n\n /* <insert Hash22 here> */\n\nfloat Noise2D(float2 uv) {\n    float2 i = floor(uv);\n    float2 f = frac(uv);\n    \n    // Get random gradients for each corner (unit vectors)\n    float2 g00 = normalize(Hash22(i + float2(0.0, 0.0)) - 0.5);\n    float2 g10 = normalize(Hash22(i + float2(1.0, 0.0)) - 0.5);\n    float2 g01 = normalize(Hash22(i + float2(0.0, 1.0)) - 0.5);\n    float2 g11 = normalize(Hash22(i + float2(1.0, 1.0)) - 0.5);\n    \n    // Dot products\n    float d00 = dot(g00, f - float2(0.0, 0.0));\n    float d10 = dot(g10, f - float2(1.0, 0.0));\n    float d01 = dot(g01, f - float2(0.0, 1.0));\n    float d11 = dot(g11, f - float2(1.0, 1.0));\n    \n    // Fade curve (smooth interpolation)\n    float2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);\n    \n    // Bilinear interpolation\n    return lerp(lerp(d00, d10, u.x), lerp(d01, d11, u.x), u.y);\n}\n\n\n",
+      "name": "Noise 2D"
+    },
+    {
+      "code": "// 3D Perlin-like Noise Function (depends on Hash33)\n \n /* <insert Hash33 here> */\n\nfloat Noise3D(float3 uv) {\n    float3 i = floor(uv);\n    float3 f = fract(uv);\n    \n    // Get random gradients for each corner (unit vectors)\n    float3 g000 = normalize(Hash33(i + float3(0.0, 0.0, 0.0)) - 0.5);\n    float3 g100 = normalize(Hash33(i + float3(1.0, 0.0, 0.0)) - 0.5);\n    float3 g010 = normalize(Hash33(i + float3(0.0, 1.0, 0.0)) - 0.5);\n    float3 g110 = normalize(Hash33(i + float3(1.0, 1.0, 0.0)) - 0.5);\n    float3 g001 = normalize(Hash33(i + float3(0.0, 0.0, 1.0)) - 0.5);\n    float3 g101 = normalize(Hash33(i + float3(1.0, 0.0, 1.0)) - 0.5);\n    float3 g011 = normalize(Hash33(i + float3(0.0, 1.0, 1.0)) - 0.5);\n    float3 g111 = normalize(Hash33(i + float3(1.0, 1.0, 1.0)) - 0.5);\n    \n    // Dot products\n    float d000 = dot(g000, f - float3(0.0, 0.0, 0.0));\n    float d100 = dot(g100, f - float3(1.0, 0.0, 0.0));\n    float d010 = dot(g010, f - float3(0.0, 1.0, 0.0));\n    float d110 = dot(g110, f - float3(1.0, 1.0, 0.0));\n    float d001 = dot(g001, f - float3(0.0, 0.0, 1.0));\n    float d101 = dot(g101, f - float3(1.0, 0.0, 1.0));\n    float d011 = dot(g011, f - float3(0.0, 1.0, 1.0));\n    float d111 = dot(g111, f - float3(1.0, 1.0, 1.0));\n    \n    // Fade curve (smooth interpolation)\n    float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);\n    \n    // Trilinear interpolation\n    float x00 = lerp(d000, d100, u.x);\n    float x10 = lerp(d010, d110, u.x);\n    float x01 = lerp(d001, d101, u.x);\n    float x11 = lerp(d011, d111, u.x);\n    \n    float y0 = lerp(x00, x10, u.y);\n    float y1 = lerp(x01, x11, u.y);\n    \n    return lerp(y0, y1, u.z);\n}\n\n",
+      "name": "Noise3D"
+    },
+    {
+      "code": "/* <insert Hash22 here> */\n\nfloat Voronoi(float2 uv) {\n    float2 i = floor(uv);\n    float2 f = frac(uv);\n    \n    float minDist = 1.0;\n    float2 nearestPoint;\n    \n    for (int x = -1; x <= 1; x++) {\n        for (int y = -1; y <= 1; y++) {\n            float2 neighbor = i + float2(x, y);\n            float2 hashValue = Hash22(neighbor); // using hash function to get pseudo-random point\n            float dist = distance(uv, hashValue);\n            if (dist < minDist) {\n                minDist = dist;\n                nearestPoint = hashValue;\n            }\n        }\n    }\n    return minDist; // returns the distance to the nearest point\n}\n\n\n",
+      "name": "Voronoi (2D)"
+    },
+    {
+      "code": "/* <insert Noise2D here> */\n\nfloat Musgrave(float2 uv) {\n    float total = 0.0;\n    float frequency = 1.0;\n    float amplitude = 1.0;\n\n    for (int i = 0; i < octaves; i++) {\n        total += Noise2D(uv * frequency) * amplitude;\n        frequency *= 2.0; // Increase frequency\n        amplitude *= 0.5; // Decrease amplitude\n    }\n    \n    return total;\n}\n\n",
+      "name": "Musgrave (2D)"
+    },
+    {
+      "code": "/* <insert Hash22 here> */\n\nfloat Marble(float2 uv) {\n    float value = sin(3.0 * uv.x + 5.0 * uv.y + time) * 0.5 + 0.5; // simple sine wave for marble effect\n    return value;\n}\n``*\n\n",
+      "name": "Marble (2D)"
+    },
+    {
+      "code": "/* <insert Hash22 here> */\n\nfloat Turbulence(float2 uv) {\n    float sum = 0.0;\n    float amplitude = 1.0;\n    float frequency = 1.0;\n    int octaves = 6;\n\n    for (int i = 0; i < octaves; i++) {\n        sum += abs(Hash22(frequency * uv)) * amplitude; // sum of absolute values for turbulence\n        frequency *= 2.0;\n        amplitude *= 0.5;\n    }\n    return sum;\n}\n\n",
+      "name": "Turbulence (2D)"
+    },
+    {
+      "code": "/* <insert Hash22 here> */\n\nfloat Worley(float2 uv) {\n    float minDist = 1.0;\n\n    for (int i = -1; i <= 1; i++) {\n        for (int j = -1; j <= 1; j++) {\n            float2 cell = floor(uv + float2(i, j));\n            float2 point = Hash22(cell); // gets the pseudo-random point for the cell\n            float dist = distance(uv, point);\n            minDist = min(minDist, dist);\n        }\n    }\n    return minDist; // returns the distance to the nearest generated point\n}\n\n",
+      "name": "Worley (2D)"
+    },
+    {
+      "code": "/* <insert Hash22 here> */\n\nfloat Gabor(float2 uv) {\n    float frequency = 5.0;\n    float bandwidth = 1.0;\n    float theta = 0.0;\n\n    float2 gaborValue = exp(-dot(uv, uv) / (2.0 * bandwidth)) * cos(frequency * dot(uv, float2(cos(theta), sin(theta))));\n    return gaborValue;\n}\n\n",
+      "name": "Gabor (2D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Voronoi3D(float3 uv) {\n    float minDist = 1.0;\n    \n    for (int x = -1; x <= 1; x++) {\n        for (int y = -1; y <= 1; y++) {\n            for (int z = -1; z <= 1; z++) {\n                float3 neighbor = floor(uv) + float3(x, y, z);\n                float3 hashValue = Hash33(neighbor); // using hash function to get pseudo-random point\n                float dist = distance(uv, hashValue);\n                minDist = min(minDist, dist);\n            }\n        }\n    }\n    return minDist; // returns the distance to the nearest point\n}\n\n",
+      "name": "Voronoi (3D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Musgrave3D(float3 uv) {\n    float noiseVal = 0.0;\n    float amplitude = 1.0;\n    float frequency = 1.0;\n    int octaves = 6;\n\n    for (int i = 0; i < octaves; i++) {\n        noiseVal += (Hash33(frequency * uv) * amplitude);\n        frequency *= 2.0;\n        amplitude *= 0.5;\n    }\n    return noiseVal;\n}\n\n",
+      "name": "Musgrave (3D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Marble3D(float3 uv) {\n    float value = sin(3.0 * uv.x + 5.0 * uv.y + 2.0 * uv.z + time) * 0.5 + 0.5; // simple sine wave for marble effect\n    return value;\n}\n\n",
+      "name": "Marble (3D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Turbulence3D(float3 uv) {\n    float sum = 0.0;\n    float amplitude = 1.0;\n    float frequency = 1.0;\n    int octaves = 6;\n\n    for (int i = 0; i < octaves; i++) {\n        sum += abs(Hash33(frequency * uv)) * amplitude; // sum of absolute values for turbulence\n        frequency *= 2.0;\n        amplitude *= 0.5;\n    }\n    return sum;\n}\n\n",
+      "name": "Turbulence (3D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Worley3D(float3 uv) {\n    float minDist = 1.0;\n\n    for (int x = -1; x <= 1; x++) {\n        for (int y = -1; y <= 1; y++) {\n            for (int z = -1; z <= 1; z++) {\n                float3 cell = floor(uv + float3(x, y, z));\n                float3 point = Hash33(cell); // gets the pseudo-random point for the cell\n                float dist = distance(uv, point);\n                minDist = min(minDist, dist);\n            }\n        }\n    }\n    return minDist; // returns the distance to the nearest generated point\n}\n\n",
+      "name": "Worley (3D)"
+    },
+    {
+      "code": "/* <insert Hash33 here> */\n\nfloat Gabor3D(float3 uv) {\n    float frequency = 5.0;\n    float bandwidth = 1.0;\n    float theta = 0.0;\n\n    float gaborValue = exp(-dot(uv, uv) / (2.0 * bandwidth)) * cos(frequency * dot(uv, float3(cos(theta), sin(theta), 0.0)));\n    return gaborValue;\n}\n\n",
+      "name": "Gabor (3D)"
+    }
+  ],
+  "version": 1
+}

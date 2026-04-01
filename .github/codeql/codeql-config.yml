@@ -1,0 +1,28 @@
+name: ShaderLab CodeQL config
+
+# Paths scanned by CodeQL – everything not listed under paths-ignore.
+#
+# paths-ignore reasons:
+#
+#   src/app/runtime  – demo playback code intentionally uses low-level /
+#                      unsafe patterns (manual memory management, raw
+#                      pointer arithmetic, unsafe casts) for efficiency
+#                      and binary-size reasons.  False-positive noise from
+#                      this directory would drown out real findings.
+#
+#   src/app/tiny     – ultra-minimal "tiny player" that strips the C++
+#                      runtime and standard library; requires additional
+#                      unsafe tricks (e.g. CrinklerX86Compat.cpp) that
+#                      are not appropriate for general scanning.
+#
+#   third_party      – vendored upstream libraries (Dear ImGui, miniaudio,
+#                      nlohmann/json, stb_image, ImGuiColorTextEdit).
+#                      We do not own or maintain this code.
+
+queries:
+  - uses: security-and-quality
+
+paths-ignore:
+  - src/app/runtime
+  - src/app/tiny
+  - third_party
