@@ -201,9 +201,7 @@ void ShaderLabIDE::ShowTransportControls() {
                     AppendDemoLog("[play] Transport playing");
                 }
                 // Start Audio
-                if (m_activeMusicIndex >= 0 && m_activeMusicIndex < (int)m_audioLibrary.size()) {
-                    auto& clip = m_audioLibrary[m_activeMusicIndex];
-                    m_audioSystem->LoadAudio(clip.path);
+                if (m_activeMusicIndex >= 0 && m_activeMusicIndex < (int)m_audioLibrary.size() && m_audioSystem) {
                     m_audioSystem->Play();
                 }
             }

@@ -982,7 +982,8 @@ std::string ScopeLocalFunctionsForModule(
 
         skipWhitespace(shaderCode, cursor);
         std::string funcName = readIdent(shaderCode, cursor);
-        if (funcName.empty()) {
+        if (funcName.empty() || 
+            funcName == "if" || funcName == "while" || funcName == "for" || funcName == "switch" || funcName == "return" || funcName == "else") {
             scan = cursor;
             continue;
         }
@@ -2946,6 +2947,8 @@ BuildResult BuildPipeline::BuildSelfContained(
         return result;
     }
 
+    std::vector<Serializer::PackedExtraFile> extraFiles;
+
     log("Bundled asset staging summary:");
     size_t audioStagedCount = 0;
     size_t textureStagedCount = 0;
@@ -2962,6 +2965,7 @@ BuildResult BuildPipeline::BuildSelfContained(
             const bool stagedExists = fs::exists(stagedAbsolute, existsEc);
             if (stagedExists) {
                 ++audioStagedCount;
+                extraFiles.push_back({stagedAbsolute.string(), stagedPath});
             }
             log("  Audio[" + std::to_string(i) + "]: " + sourcePath + " -> " + stagedPath + (stagedExists ? " [staged]" : " [missing]"));
         }
@@ -2984,6 +2988,7 @@ BuildResult BuildPipeline::BuildSelfContained(
             const bool stagedExists = fs::exists(stagedAbsolute, existsEc);
             if (stagedExists) {
                 ++textureStagedCount;
+                extraFiles.push_back({stagedAbsolute.string(), binding.filePath});
             }
             log("  Texture[scene " + std::to_string(snapshot.sceneIndex) + ", ch " + std::to_string(binding.channelIndex) + "]: " +
                 snapshot.path + " -> " + binding.filePath + (stagedExists ? " [staged]" : " [missing]"));
@@ -2995,7 +3000,6 @@ BuildResult BuildPipeline::BuildSelfContained(
         log("  WARNING: One or more assets were not staged. Check [missing] entries above.");
     }
 
-    std::vector<Serializer::PackedExtraFile> extraFiles;
     std::string writeError;
 
     if (useMicroPlayer) {

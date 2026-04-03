@@ -690,13 +690,20 @@ namespace Serializer {
     bool LoadProject(const std::string& filepath, ProjectData& outProject) {
         std::ifstream i(filepath);
         if (!i.is_open()) return false;
-        json j;
-        i >> j;
-        outProject = j.get<ProjectData>();
-        const fs::path projectDirectory = fs::path(filepath).parent_path();
-        ResolveLinkedShaderCode(outProject, projectDirectory);
-        ResolveLinkedAssetPaths(outProject, projectDirectory);
-        return true;
+        try {
+            json j;
+            i >> j;
+            outProject = j.get<ProjectData>();
+            const fs::path projectDirectory = fs::path(filepath).parent_path();
+            ResolveLinkedShaderCode(outProject, projectDirectory);
+            ResolveLinkedAssetPaths(outProject, projectDirectory);
+            return true;
+        } catch (const std::exception& e) {
+            std::cerr << "Serializer::LoadProject JSON error: " << e.what() << "\n";
+            return false;
+        } catch (...) {
+            return false;
+        }
     }
 
     bool ExportProject(const ProjectData& inputProject, const std::string& outputFile) {

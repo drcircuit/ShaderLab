@@ -1914,7 +1914,7 @@ void DemoPlayer::Update(double wallTime, float dt) {
                     if (preferredWidth != currentWidth || preferredHeight != currentHeight) {
                         m_pendingRenderResolutionUpdate = true;
                         m_pendingRenderWidth = preferredWidth;
-                        m_pendingRenderHeight = preferredHeight;
+                        m_pendingRenderHeight = preferredHeight; m_width = static_cast<int>(preferredWidth); m_height = static_cast<int>(preferredHeight);
                     }
                 }
 

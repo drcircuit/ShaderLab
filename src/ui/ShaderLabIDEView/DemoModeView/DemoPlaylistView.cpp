@@ -448,40 +448,60 @@ void ShaderLabIDE::HandlePlaylistFocusScrub(bool playlistWindowFocused, bool edi
         return;
     }
 
+    static int s_lastFocusedBeatScrub = -1;
+
     const bool altDown = ImGui::IsKeyDown(ImGuiKey_LeftAlt) || ImGui::IsKeyDown(ImGuiKey_RightAlt);
     if (altDown && ImGui::IsKeyPressed(ImGuiKey_UpArrow, true)) {
         ScrubPlaylistByDeltaBeats(-0.25);
     } else if (altDown && ImGui::IsKeyPressed(ImGuiKey_DownArrow, true)) {
         ScrubPlaylistByDeltaBeats(0.25);
-    } else if (track.currentBeat != focusedBeatThisFrame) {
-        ScrubPlaylistToBeat(focusedBeatThisFrame);
+    } else if (track.currentBeat != focusedBeatThisFrame && focusedBeatThisFrame != s_lastFocusedBeatScrub) {
+        if (m_transport.state != TransportState::Playing) {
+            ScrubPlaylistToBeat(focusedBeatThisFrame);
+        }
+    }
+    
+    if (!altDown && !ImGui::IsKeyDown(ImGuiKey_UpArrow) && !ImGui::IsKeyDown(ImGuiKey_DownArrow)) {
+        s_lastFocusedBeatScrub = focusedBeatThisFrame;
     }
 }
 
 void ShaderLabIDE::HandlePlaylistScrollFollow(int focusedBeatThisFrame) {
     auto& track = m_track;
+    static int s_lastFocusedBeatScroll = -1;
+
     if (track.lengthBeats > 0 && focusedBeatThisFrame >= 0) {
-        const float rowHeight = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().CellPadding.y * 2.0f;
-        const float windowHeight = ImGui::GetWindowHeight();
-        const float rowMin = rowHeight * static_cast<float>(focusedBeatThisFrame);
-        const float rowMax = rowMin + rowHeight;
-        const float scrollY = ImGui::GetScrollY();
-        const float scrollMax = ImGui::GetScrollMaxY();
+        if (focusedBeatThisFrame != s_lastFocusedBeatScroll) {
+            s_lastFocusedBeatScroll = focusedBeatThisFrame;
 
-        const float deadZoneTop = scrollY + windowHeight * 0.30f;
-        const float deadZoneBottom = scrollY + windowHeight * 0.70f;
-        const bool withinDeadZone = (rowMin >= deadZoneTop) && (rowMax <= deadZoneBottom);
+            const float rowHeight = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().CellPadding.y * 2.0f;
+            const float windowHeight = ImGui::GetWindowHeight();
+            const float rowMin = rowHeight * static_cast<float>(focusedBeatThisFrame);
+            const float rowMax = rowMin + rowHeight;
+            const float scrollY = ImGui::GetScrollY();
+            const float scrollMax = ImGui::GetScrollMaxY();
 
-        if (!withinDeadZone) {
-            float targetY = rowMin - (windowHeight - rowHeight) * 0.5f;
-            if (targetY < 0.0f) targetY = 0.0f;
-            if (targetY > scrollMax) targetY = scrollMax;
-            ImGui::SetScrollY(targetY);
+            const float deadZoneTop = scrollY + windowHeight * 0.30f;
+            const float deadZoneBottom = scrollY + windowHeight * 0.70f;
+            const bool withinDeadZone = (rowMin >= deadZoneTop) && (rowMax <= deadZoneBottom);
+
+            if (!withinDeadZone) {
+                float targetY = rowMin - (windowHeight - rowHeight) * 0.5f;
+                if (targetY < 0.0f) targetY = 0.0f;
+                if (targetY > scrollMax) targetY = scrollMax;
+                ImGui::SetScrollY(targetY);
+            }
         }
         return;
+    } else {
+        s_lastFocusedBeatScroll = -1;
     }
 
     if (m_transport.state == TransportState::Playing && track.lengthBeats > 0) {
+        if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) {
+            return;
+        }
+
         const float rowHeight = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().CellPadding.y * 2.0f;
         const float windowHeight = ImGui::GetWindowHeight();
         const float rowMin = rowHeight * track.currentBeat;

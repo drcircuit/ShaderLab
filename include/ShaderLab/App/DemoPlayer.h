@@ -93,7 +93,8 @@ private:
     float m_activeSceneOffset = 0.0f; // Offset in beats relative to scene start
     double m_activeSceneStartBeat = 0.0;
     Transport m_transport; // Runtime transport state
-    
+    double m_currentAudioStartTime = 0.0;
+
     // Render Resources
     uint32_t m_width = 0;
     uint32_t m_height = 0;

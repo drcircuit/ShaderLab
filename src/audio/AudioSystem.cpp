@@ -149,13 +149,16 @@ void AudioSystem::Seek(float timeInSeconds) {
         return;
     }
 
-    ma_uint32 sampleRate;
-    ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+    ma_uint32 sampleRate = 0;
+    ma_result res = ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
     
+    if (res != MA_SUCCESS || sampleRate == 0) {
+        sampleRate = ma_engine_get_sample_rate(m_engine);
+    }
+
     ma_uint64 framePosition = static_cast<ma_uint64>(timeInSeconds * sampleRate);
     ma_sound_seek_to_pcm_frame(m_sound, framePosition);
 }
-
 void AudioSystem::SetVolume(float volume) {
     if (m_sound) {
         ma_sound_set_volume(m_sound, volume);
@@ -179,11 +182,16 @@ float AudioSystem::GetPlaybackTime() const {
         return 0.0f;
     }
 
-    ma_uint64 cursor;
+    ma_uint64 cursor = 0;
     ma_sound_get_cursor_in_pcm_frames(m_sound, &cursor);
 
-    ma_uint32 sampleRate;
-    ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+    ma_uint32 sampleRate = 0;
+    ma_result res = ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+    
+    if (res != MA_SUCCESS || sampleRate == 0) {
+        sampleRate = ma_engine_get_sample_rate(m_engine);
+        if (sampleRate == 0) sampleRate = 44100;
+    }
 
     return static_cast<float>(cursor) / static_cast<float>(sampleRate);
 }
@@ -193,11 +201,16 @@ float AudioSystem::GetDuration() const {
         return 0.0f;
     }
 
-    ma_uint64 lengthInFrames;
+    ma_uint64 lengthInFrames = 0;
     ma_sound_get_length_in_pcm_frames(m_sound, &lengthInFrames);
 
-    ma_uint32 sampleRate;
-    ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+    ma_uint32 sampleRate = 0;
+    ma_result res = ma_sound_get_data_format(m_sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+
+    if (res != MA_SUCCESS || sampleRate == 0) {
+        sampleRate = ma_engine_get_sample_rate(m_engine);
+        if (sampleRate == 0) sampleRate = 44100;
+    }
 
     return static_cast<float>(lengthInFrames) / static_cast<float>(sampleRate);
 }

@@ -52,7 +52,7 @@ double PlaybackService::BeatToSeconds(double beat, float bpm) const {
 void PlaybackService::SeekToBeat(Transport& transport, DemoTrack& track, int beat) const {
     if (track.lengthBeats <= 0) {
         track.currentBeat = 0;
-        track.lastTriggeredBeat = -1;
+        track.lastTriggeredBeat = 0;
         return;
     }
 
@@ -63,7 +63,7 @@ void PlaybackService::SeekToBeat(Transport& transport, DemoTrack& track, int bea
     transport.timeSeconds = BeatToSeconds(static_cast<double>(clampedBeat), bpm);
 
     track.currentBeat = clampedBeat;
-    track.lastTriggeredBeat = clampedBeat - 1;
+    track.lastTriggeredBeat = clampedBeat;
 }
 
 bool PlaybackService::HasMusicIndexReference(const DemoTrack& track, int musicIndex) const {

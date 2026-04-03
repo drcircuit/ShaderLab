@@ -85,12 +85,7 @@ void ShaderLabIDE::BeginSceneTransition(int beat,
 void ShaderLabIDE::UpdateTransport(double wallNowSeconds, float dtSeconds) {
     PlaybackService playback;
     if (m_transport.state == TransportState::Playing && !m_transport.freezeTime) {
-        // Sync with Audio if available
-        if (m_audioSystem && m_audioSystem->IsPlaying()) {
-            m_transport.timeSeconds = (double)m_audioSystem->GetPlaybackTime();
-        } else {
-            playback.AdvanceClock(m_transport, wallNowSeconds, dtSeconds);
-        }
+        playback.AdvanceClock(m_transport, wallNowSeconds, dtSeconds);
 
         // Demo Track Logic
         // Check triggers
@@ -225,8 +220,7 @@ void ShaderLabIDE::UpdateTransport(double wallNowSeconds, float dtSeconds) {
                         // Music Change
                         if (event.musicIndex >= 0 && event.musicIndex < (int)m_audioLibrary.size() && m_audioSystem) {
                              auto& clip = m_audioLibrary[event.musicIndex];
-                             m_audioSystem->LoadAudio(clip.path);
-                             if (m_transport.state == TransportState::Playing) {
+                             m_audioSystem->LoadAudio(clip.path);                               m_audioSystem->Seek(static_cast<float>(m_transport.timeSeconds));                             if (m_transport.state == TransportState::Playing) {
                                  m_audioSystem->Play();
                              }
                              m_activeMusicIndex = event.musicIndex;
@@ -300,10 +294,18 @@ void ShaderLabIDE::SeekToBeat(int beat) {
 
     ResetTransitionState(true);
     int ignoreSceneBeat = -1;
+    
+    int targetMusicIndex = -1;
+    int lastMusicBeat = -1;
 
     for (int b = 0; b <= seekBeat; ++b) {
         for (const auto& row : track.rows) {
             if (row.rowId != b) continue;
+
+            if (row.musicIndex >= 0) {
+                targetMusicIndex = row.musicIndex;
+                lastMusicBeat = b;
+            }
 
             if (!row.transitionPresetStem.empty() && row.transitionDuration > 0.0f) {
                 PlaybackEvent event;
@@ -355,6 +357,26 @@ void ShaderLabIDE::SeekToBeat(int beat) {
     }
 
     ApplyPlaybackActiveScene(m_activeSceneIndex);
+
+    if (targetMusicIndex >= 0 && targetMusicIndex < (int)m_audioLibrary.size() && m_audioSystem) {
+        auto& clip = m_audioLibrary[targetMusicIndex];
+        m_activeMusicIndex = targetMusicIndex;
+        if (clip.bpm > 0.0f) {
+            m_transport.bpm = clip.bpm;
+        }
+
+        m_audioSystem->LoadAudio(clip.path);
+
+        float offsetSeconds = static_cast<float>(m_transport.timeSeconds);
+
+        m_audioSystem->Seek(offsetSeconds);
+
+        if (m_transport.state == TransportState::Playing) {
+             m_audioSystem->Play();
+        }
+    } else {
+        StopAudioAndClearMusicState();
+    }
 }
 
 } // namespace ShaderLab

@@ -275,6 +275,46 @@ void ShaderLabIDE::ShowBuildSettingsWindow() {
     ImGui::TextDisabled("File menu builds use this target.");
     ImGui::PopTextWrapPos();
 
+    ImGui::SeparatorText("3D Resolution");
+    const char* resLabels[] = {
+        "Full (Native Window Settings)", "4096", "2560", "2048", "1920", "1600", "1280", "1024", "800", "640" 
+    };
+    int resIndex = 0;
+    switch(m_fullscreenRenderResolutionPreset) {
+        case FullscreenRenderResolutionPreset::W4096: resIndex = 1; break;
+        case FullscreenRenderResolutionPreset::W2560: resIndex = 2; break;
+        case FullscreenRenderResolutionPreset::W2048: resIndex = 3; break;
+        case FullscreenRenderResolutionPreset::W1920: resIndex = 4; break;
+        case FullscreenRenderResolutionPreset::W1600: resIndex = 5; break;
+        case FullscreenRenderResolutionPreset::W1280: resIndex = 6; break;
+        case FullscreenRenderResolutionPreset::W1024: resIndex = 7; break;
+        case FullscreenRenderResolutionPreset::W800:  resIndex = 8; break;
+        case FullscreenRenderResolutionPreset::W640:  resIndex = 9; break;
+        default: resIndex = 0; break;
+    }
+    ImGui::TextUnformatted("Resolution Preset");
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::Combo("##BuildSettingsResolution", &resIndex, resLabels, 10)) {
+        switch(resIndex) {
+            case 1: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W4096; break;
+            case 2: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W2560; break;
+            case 3: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W2048; break;
+            case 4: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W1920; break;
+            case 5: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W1600; break;
+            case 6: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W1280; break;
+            case 7: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W1024; break;
+            case 8: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W800; break;
+            case 9: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::W640; break;
+            default: m_fullscreenRenderResolutionPreset = FullscreenRenderResolutionPreset::Full; break;
+        }
+        if (!m_currentProjectPath.empty()) {
+            SaveProjectUiSettings();
+        }
+    }
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextDisabled("Sets the rendering resolution of the exported standalone player (respecting aspect limits). Matches Editor 3D preview target.");
+    ImGui::PopTextWrapPos();
+
     ImGui::SeparatorText("Size Budget");
     static const SizeTargetPreset presets[] = {
         SizeTargetPreset::None,
@@ -623,7 +663,18 @@ void ShaderLabIDE::ShowBuildSettingsWindow() {
         const bool buildScreenSaver = buildTargetKind == BuildTargetKind::SelfContainedScreenSaver;
         const bool buildPackaged = buildTargetKind == BuildTargetKind::PackagedDemo;
         std::string targetOutputPath;
-        const std::string defaultBinaryName = (m_currentProjectPath.empty() ? "MyDemo" : fs::path(m_currentProjectPath).stem().string()) + (buildPackaged ? ".zip" : (buildScreenSaver ? ".scr" : ".exe"));
+        
+        std::string baseName = "MyDemo";
+        if (!m_demoTitle.empty() && m_demoTitle != "Untitled Demo") {
+            baseName = m_demoTitle;
+            for (auto& c : baseName) {
+                if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') c = '_';
+            }
+        } else if (!m_currentProjectPath.empty()) {
+            baseName = fs::path(m_currentProjectPath).stem().string();
+        }
+        
+        const std::string defaultBinaryName = baseName + (buildPackaged ? ".zip" : (buildScreenSaver ? ".scr" : ".exe"));
 
         fs::path outputDir = fs::path(m_buildSettingsCleanSolutionRootPath);
         std::error_code makeDirEc;

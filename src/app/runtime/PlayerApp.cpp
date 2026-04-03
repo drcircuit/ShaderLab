@@ -186,9 +186,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 int w = LOWORD(lParam);
                 int h = HIWORD(lParam);
                 if (w > 0 && h > 0) {
-                    g_Resources.swapchain->Resize(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-                    if (g_Resources.player) {
-                        g_Resources.player->OnResize(w, h);
+                    if (!g_Runtime.renderResolutionApplied) {
+                        g_Resources.swapchain->Resize(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+                        if (g_Resources.player) {
+                            g_Resources.player->OnResize(w, h);
+                        }
                     }
                 }
             }
@@ -446,13 +448,23 @@ int RunPlayerApp(HINSTANCE hInstance, const PlayerLaunchOptions& options) {
 
             g_Resources.player->Update(0.0, static_cast<float>(dt));
 
-            if (!g_Runtime.renderResolutionApplied && (launchFullscreen || g_Runtime.screenSaverMode)) {
+            if (!g_Runtime.renderResolutionApplied) {
                 uint32_t desiredWidth = 0;
                 uint32_t desiredHeight = 0;
                 if (g_Resources.player->ConsumePendingRenderResolution(desiredWidth, desiredHeight) &&
                     desiredWidth > 0 && desiredHeight > 0) {
+                    
+                    // Resize the swapchain to match the prescribed render resolution
                     g_Resources.swapchain->Resize(desiredWidth, desiredHeight);
                     g_Resources.player->OnResize(static_cast<int>(desiredWidth), static_cast<int>(desiredHeight));
+                    
+                    // If windowed, resize the actual OS window to match so the aspect ratio and resolution are 1:1
+                    if (!launchFullscreen && !g_Runtime.screenSaverMode) {
+                        RECT r = { 0, 0, (LONG)desiredWidth, (LONG)desiredHeight };
+                        AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
+                        SetWindowPos(hwnd, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER);
+                    }
+
                     g_Runtime.renderResolutionApplied = true;
                 }
             }

@@ -177,7 +177,7 @@ void ShaderLabApp::Update(float deltaTime) {
 
     if (!m_appActive) {
         Sleep(16);
-        return;
+        // keep updating but with sleep to reduce CPU usage
     }
 
     // Update UI transport
@@ -206,7 +206,7 @@ void ShaderLabApp::Render() {
     }
 
     if (!m_appActive) {
-        return;
+        // still render, but Update already did a Sleep
     }
 
     // Reset command list
@@ -326,7 +326,6 @@ LRESULT ShaderLabApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
         case WM_ACTIVATEAPP:
             m_appActive = (wParam == TRUE);
-            handled = true;
             break;
 
         case WM_SYSCOMMAND:
@@ -341,13 +340,6 @@ LRESULT ShaderLabApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
                 uint32_t height = HIWORD(lParam);
                 OnResize(width, height);
             }
-            if (ImGui::GetCurrentContext()) {
-                ImGui::ClearActiveID();
-                ImGui::GetIO().MouseDown[0] = false;
-                ImGui::GetIO().MouseDown[1] = false;
-                ImGui::GetIO().MouseDown[2] = false;
-            }
-            handled = true;
             break;
 
         case WM_DESTROY:
